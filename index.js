@@ -1,5 +1,6 @@
 const express = require('express');
 const app = express();
+const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const port = process.env.PORT || 5000;
 require('dotenv').config();
@@ -28,31 +29,66 @@ async function run() {
 
     const bookCollection = client.db("BookVibeDB").collection("Book");
     const cartsCollection = client.db("BookVibeDB").collection("Carts");
+    const usersCollection = client.db("BookVibeDB").collection("Users");
 
-    app.get('/book', async(req,res)=>{
+
+    app.patch('/users/admin/:id',async(req,res)=>{
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const updateDoc = {
+        $set:{
+          role: 'admin'
+        }
+      }
+      const result = await usersCollection.updateOne(query,updateDoc);
+      res.send(result);
+    })
+
+    app.get('/users', async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    })
+    app.delete('/users/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await usersCollection.deleteOne(query);
+      res.send(result);
+    })
+    app.post('/users', async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+      const existing_user = await usersCollection.findOne(query);
+      if (existing_user) {
+        return res.send({ message: 'User Already Exists' });
+      }
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    })
+
+    app.get('/book', async (req, res) => {
       const result = await bookCollection.find().toArray();
       res.send(result);
     });
 
-    app.get('/carts', async(req,res)=>{
+    app.get('/carts', async (req, res) => {
       const email = req.query.email;
-      const query = {email:email};
+      const query = { email: email };
       const result = await cartsCollection.find(query).toArray();
       res.send(result);
     })
 
-    app.post('/carts', async(req,res)=>{
+    app.post('/carts', async (req, res) => {
       const cartItem = req.body;
       const result = await cartsCollection.insertOne(cartItem);
       res.send(result);
     })
 
-    app.delete('/carts/:id',async(req,res)=>{
-      const id= req.params.id;
-      const query = {_id: new ObjectId(id)}
+    app.delete('/carts/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
       const result = await cartsCollection.deleteOne(query);
       res.send(result);
-    } )
+    })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
@@ -65,9 +101,9 @@ async function run() {
 run().catch(console.dir);
 
 
-app.get('/', (req,res)=>{
-    res.send('Vibe is creating');
+app.get('/', (req, res) => {
+  res.send('Vibe is creating');
 })
-app.listen(port,()=>{
-    console.log(`Vibe is opening ${port}`);
+app.listen(port, () => {
+  console.log(`Vibe is opening ${port}`);
 })
