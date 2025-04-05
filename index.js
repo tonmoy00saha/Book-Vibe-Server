@@ -31,24 +31,74 @@ async function run() {
     const cartsCollection = client.db("BookVibeDB").collection("Carts");
     const usersCollection = client.db("BookVibeDB").collection("Users");
 
+    // JWT realted API
+    app.post('/jwt', async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
+        expiresIn: '1h'
+      });
+      res.send({ token });
+    })
 
-    app.patch('/users/admin/:id',async(req,res)=>{
+
+    // middlewares
+    const verifyToken = (req, res, next) => {
+      // console.log('inside verify token ', req.headers.authorization);
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: 'unauthorized access' });
+      }
+      const token = req.headers.authorization.split(' ')[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN, (error, decoded) => {
+        if (error) {
+          return res.status(401).send({ message: 'unauthorized access' });
+        }
+        req.decoded = decoded;
+        next();
+      })
+    }
+    // use verify admin after verify token
+    const verifyAdmin = async(req, res, next)=>{
+      const email = req.decoded.email;
+      const query = {email: email};
+      const user = await usersCollection.findOne(query);
+      const isAdmin = user?.role==='admin';
+      if(!isAdmin){
+        return res.status(403).send({message: 'Forbidded Access'});
+      }
+      next();
+    }
+
+    app.patch('/users/admin/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)};
+      const query = { _id: new ObjectId(id) };
       const updateDoc = {
-        $set:{
+        $set: {
           role: 'admin'
         }
       }
-      const result = await usersCollection.updateOne(query,updateDoc);
+      const result = await usersCollection.updateOne(query, updateDoc);
       res.send(result);
     })
 
-    app.get('/users', async (req, res) => {
+    app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     })
-    app.delete('/users/:id', async (req, res) => {
+    app.get('/users/admin/:email', verifyToken, async(req,res)=>{
+      const email = req.params.email;
+      if(email !== req.decoded.email){
+        return res.status(403).send({message: 'Forbidden access'});
+      }
+      const query = {email: email};
+      const user = await usersCollection.findOne(query);
+      let admin = false;
+      if(user){
+        admin = user?.role === 'admin' ;
+      }
+      res.send({admin});
+
+    })
+    app.delete('/users/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await usersCollection.deleteOne(query);
