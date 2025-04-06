@@ -120,6 +120,12 @@ async function run() {
       res.send(result);
     });
 
+    app.post('/book',verifyToken, verifyAdmin, async(req,res)=>{
+      const book = req.body;
+      const result = await bookCollection.insertOne(book);
+      res.send(book);
+    })
+
     app.get('/carts', async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
