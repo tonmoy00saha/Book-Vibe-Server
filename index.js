@@ -119,13 +119,47 @@ async function run() {
       const result = await bookCollection.find().toArray();
       res.send(result);
     });
+    app.get('/book/:id', async(req,res)=>{
+      const id = req.params.id;
+      const query = {_id : new ObjectId(id)};
+      const result = await bookCollection.findOne(query);
+      res.send(result);
+    })
 
     app.post('/book',verifyToken, verifyAdmin, async(req,res)=>{
       const book = req.body;
       const result = await bookCollection.insertOne(book);
       res.send(book);
+    });
+    app.patch('/book/:id', async(req,res)=>{
+      const item = req.body;
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+      console.log(item);
+      const updateDoc = {
+        $set:{
+          bookName:item.bookName,
+          author:item.authorName,
+          review:item.review,
+          totalPages: item.totalPages,
+          rating: item.rating,
+          category:item.category,
+          tags: item.tags,
+          publisher:item.publisher,
+          yearOfPublishing:item.yearofpublishing,
+          price: item.price,
+        }
+      }
+      const result = await bookCollection.updateOne(filter, updateDoc);
+      res.send(result);
     })
 
+    app.delete('/book/:id',verifyToken,verifyAdmin ,async(req,res)=>{
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await bookCollection.deleteOne(query);
+      res.send(result);
+    })
     app.get('/carts', async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
