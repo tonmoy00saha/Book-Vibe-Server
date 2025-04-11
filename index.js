@@ -30,6 +30,7 @@ async function run() {
     const bookCollection = client.db("BookVibeDB").collection("Book");
     const cartsCollection = client.db("BookVibeDB").collection("Carts");
     const usersCollection = client.db("BookVibeDB").collection("Users");
+    const ordersCollection = client.db("BookVibeDB").collection("Orders");
 
     // JWT realted API
     app.post('/jwt', async (req, res) => {
@@ -115,6 +116,28 @@ async function run() {
       res.send(result);
     })
 
+    app.post('/orders', async(req,res)=>{
+      const order = req.body;
+      const result = await ordersCollection.insertOne(order);
+      res.send(result);
+    })
+    app.get('/orders', verifyToken, verifyAdmin ,async(req,res)=>{
+        const result = await ordersCollection.find().toArray();
+        res.send(result);
+    })
+    app.patch('/orders/:id', async(req,res)=>{
+      const id = req.params.id;
+      const {role} = req.body;
+      const query = {_id: new ObjectId(id)};
+      const updateDoc = {
+        $set: {
+          status: role
+        }
+      }
+      const result = await ordersCollection.updateOne(query, updateDoc);
+      res.send(result);
+    })
+
     app.get('/book', async (req, res) => {
       const result = await bookCollection.find().toArray();
       res.send(result);
@@ -177,6 +200,12 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
       const result = await cartsCollection.deleteOne(query);
+      res.send(result);
+    })
+    app.delete('/carts/email/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email }
+      const result = await cartsCollection.deleteMany(query);
       res.send(result);
     })
 
